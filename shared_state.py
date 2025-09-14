@@ -10,7 +10,7 @@ class DecoyStatusManager:
     
     def __init__(self):
         self._lock = threading.Lock()
-        self._latest_decoy_status: Optional[str] = None
+        self._latest_decoy_status: Optional[str] = "OFF"  # Default to OFF when no events found
         self._latest_message_time: Optional[datetime] = None
         self._status_message_id: Optional[int] = None
         self._check_interval: int = 5

@@ -37,6 +37,10 @@ async def on_ready():
     # Set bot as online in shared state
     decoy_status_manager.set_bot_online(True)
     
+    # Initialize with OFF status and current time
+    decoy_status_manager.update_status("OFF", datetime.now())
+    print("Bot initialized with OFF status")
+    
     # Check recent messages to determine current status
     await check_recent_messages()
     
@@ -245,6 +249,10 @@ async def check_recent_messages(force_update=False):
                 print(f"Status unchanged: {current_status} (last check: {current_time.strftime('%H:%M:%S') if current_time else 'Never'})")
         else:
             print("No decoy messages found in the last 200 messages")
+            # If no decoy messages found, ensure status is OFF and update last check time
+            if current_status != "OFF" or force_update:
+                decoy_status_manager.update_status("OFF", datetime.now())
+                print("Status set to OFF (no decoy events detected)")
         
         print(f"Checked {message_count} messages, found {decoy_messages_found} decoy messages")
                     

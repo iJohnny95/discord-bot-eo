@@ -148,10 +148,23 @@ async def check_recent_messages(force_update=False):
     try:
         channel = client.get_channel(TARGET_CHANNEL_ID)
         if not channel:
-            print("Could not find target channel")
+            print("❌ Could not find target channel")
+            print(f"   Looking for channel ID: {TARGET_CHANNEL_ID}")
+            print(f"   Available channels: {[f'{c.id}:{c.name}' for c in client.get_all_channels()]}")
             return
             
         print(f"Checking recent messages in channel: {channel.name}")
+        print(f"   Channel ID: {channel.id}")
+        print(f"   Channel type: {channel.type}")
+        
+        # Check if we can read message history
+        try:
+            # Try to get permissions
+            permissions = channel.permissions_for(channel.guild.me)
+            print(f"   Bot permissions: read_messages={permissions.read_messages}, read_message_history={permissions.read_message_history}")
+        except Exception as e:
+            print(f"   Could not check permissions: {e}")
+            
         message_count = 0
         decoy_messages_found = 0
         
@@ -163,6 +176,7 @@ async def check_recent_messages(force_update=False):
         
         # Get last 200 messages to find decoy messages
         decoy_messages = []  # Store all decoy messages found
+        recent_messages_sample = []  # Store sample of recent messages for debugging
         
         async for message in channel.history(limit=200):
             message_count += 1
@@ -171,6 +185,14 @@ async def check_recent_messages(force_update=False):
                 
             content = message.content
             message_time = message.created_at
+            
+            # Store sample of recent messages for debugging
+            if len(recent_messages_sample) < 5:
+                recent_messages_sample.append({
+                    'content': content[:100],
+                    'author': message.author.name,
+                    'time': message_time.strftime('%H:%M:%S')
+                })
             
             # Check if this is a decoy message
             is_decoy_on = any(pattern.search(content) for pattern in DECOY_ON_PATTERNS)
@@ -185,6 +207,14 @@ async def check_recent_messages(force_update=False):
                     'status': decoy_status
                 })
                 print(f"Found decoy message: [{message_time.strftime('%H:%M:%S')}] {decoy_status} - {content[:100]}...")
+        
+        # Debug: Show sample of recent messages
+        if recent_messages_sample:
+            print(f"   Sample of recent messages:")
+            for i, msg in enumerate(recent_messages_sample):
+                print(f"     {i+1}. [{msg['time']}] {msg['author']}: {msg['content']}")
+        else:
+            print(f"   No recent messages found in channel")
         
         # Find the most recent decoy message
         if decoy_messages:
@@ -405,8 +435,16 @@ async def on_message(message):
                 last_update = datetime.fromisoformat(status_data['last_update'])
                 info_text += f"• Last update: {last_update.strftime('%Y-%m-%d %H:%M:%S')}\n"
             info_text += f"• API available: Yes\n"
-            info_text += f"• Commands: !decoy_status, !search_decoy, !interval <sec>, !cleanup, !bot_info"
+            info_text += f"• Commands: !decoy_status, !search_decoy, !interval <sec>, !cleanup, !bot_info, !debug"
             await output_channel.send(info_text)
+    
+    # Handle debug command
+    elif content.lower() == "!debug":
+        print("Debug info requested")
+        await check_recent_messages(force_update=True)
+        output_channel = client.get_channel(OUTPUT_CHANNEL_ID)
+        if output_channel:
+            await output_channel.send("🔍 Debug check completed - check console logs for details")
 
 if __name__ == "__main__":
     try:

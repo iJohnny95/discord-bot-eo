@@ -122,46 +122,34 @@ async def create_status_message():
         latest_decoy_status = status_data['status']
         latest_message_time_str = status_data['last_update']
         
-        # Create enhanced message content for better visual appeal
-        # Since discord.py-self doesn't support embeds, we'll use rich text formatting
-        
-        # Create the main content with enhanced formatting
+        # Create simple but professional message content
         if latest_decoy_status == "ON":
             content = "@everyone\n"
-            content += "🛡️ **DECOY STATUS UPDATE** 🛡️\n"
-            content += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            content += "🚨 **STATUS:** **ON**\n"
-            content += "⚠️ **ALERT:** **ACTIVE PROTECTION**\n"
-            content += "📢 **NOTIFICATION:** @everyone\n"
-            content += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            content += "🛡️ **DECOY STATUS: ON** 🚨\n"
+            content += "⚠️ **ACTIVE PROTECTION** - Do not hit decoy NPCs\n"
         else:
-            content = "🛡️ **DECOY STATUS UPDATE** 🛡️\n"
-            content += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            content += "✅ **STATUS:** **OFF**\n"
-            content += "🛡️ **PROTECTION:** **STANDBY**\n"
-            content += "📊 **STATE:** **MONITORING**\n"
-            content += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            content = "🛡️ **DECOY STATUS: OFF** ✅\n"
+            content += "🛡️ **PROTECTION STANDBY** - Monitoring for activity\n"
         
         # Add timestamp information
         if latest_message_time_str:
             latest_message_time = datetime.fromisoformat(latest_message_time_str)
-            content += f"🕐 **Last Activity:** `{latest_message_time.strftime('%Y-%m-%d %H:%M:%S')}`\n"
+            content += f"📅 **Last Updated:** {latest_message_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
         else:
-            content += "🕐 **Last Activity:** `No recent decoy activity detected`\n"
+            content += f"📅 **Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
         
-        # Add footer with bot info
-        content += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        content += "🤖 **PandaBot Decoy Monitor** • Real-time Status Updates"
+        # Add bot info
+        content += "🤖 PandaBot Decoy Monitor"
         
         # Send the new message
         try:
             message = await output_channel.send(content)
-            print(f"✅ Created new status message with enhanced layout: {latest_decoy_status}")
+            print(f"✅ Created new status message: {latest_decoy_status}")
             
             # Clean up old status messages (keep last 5)
             await cleanup_old_status_messages()
         except Exception as e:
-            print(f"❌ Error creating enhanced message: {e}")
+            print(f"❌ Error creating message: {e}")
             import traceback
             traceback.print_exc()
         

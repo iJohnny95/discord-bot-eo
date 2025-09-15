@@ -191,13 +191,22 @@ async def create_status_message():
         
         # Send the new message
         try:
-            message = await output_channel.send(content=content, embed=embed)
+            message = await output_channel.send(content=content, embeds=[embed])
             print(f"✅ Created new status message with enhanced layout: {latest_decoy_status}")
             
             # Clean up old status messages (keep last 5)
             await cleanup_old_status_messages()
         except Exception as e:
             print(f"❌ Error creating message: {e}")
+            # Fallback to simple text message if embed fails
+            try:
+                fallback_content = f"🛡️ **DECOY STATUS: {latest_decoy_status}**"
+                if latest_decoy_status == "ON":
+                    fallback_content = f"@everyone\n{fallback_content}"
+                await output_channel.send(fallback_content)
+                print(f"✅ Created fallback status message: {latest_decoy_status}")
+            except Exception as fallback_error:
+                print(f"❌ Error creating fallback message: {fallback_error}")
         
     except Exception as e:
         print(f"Error creating status message: {e}")

@@ -161,16 +161,9 @@ async def create_status_message():
             # Clean up old status messages (keep last 5)
             await cleanup_old_status_messages()
         except Exception as e:
-            print(f"❌ Error creating message: {e}")
-            # Fallback to simple text message if rich formatting fails
-            try:
-                fallback_content = f"🛡️ **DECOY STATUS: {latest_decoy_status}**"
-                if latest_decoy_status == "ON":
-                    fallback_content = f"@everyone\n{fallback_content}"
-                await output_channel.send(fallback_content)
-                print(f"✅ Created fallback status message: {latest_decoy_status}")
-            except Exception as fallback_error:
-                print(f"❌ Error creating fallback message: {fallback_error}")
+            print(f"❌ Error creating enhanced message: {e}")
+            import traceback
+            traceback.print_exc()
         
     except Exception as e:
         print(f"Error creating status message: {e}")

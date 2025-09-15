@@ -44,6 +44,25 @@ async def on_ready():
     # Check recent messages to determine current status
     await check_recent_messages()
     
+    # Ensure we have at least one status message in the output channel
+    # This handles the case where no decoy messages are found
+    try:
+        output_channel = client.get_channel(OUTPUT_CHANNEL_ID)
+        if output_channel:
+            # Check if we have any status messages from this bot
+            has_status_message = False
+            async for message in output_channel.history(limit=10):
+                if message.author.id == client.user.id and ("DECOY STATUS" in message.content or message.embeds):
+                    has_status_message = True
+                    break
+            
+            # If no status message exists, create one
+            if not has_status_message:
+                print("No existing status message found, creating initial status message...")
+                await create_status_message()
+    except Exception as e:
+        print(f"Error ensuring initial status message: {e}")
+    
     # Start the periodic check task
     asyncio.create_task(periodic_decoy_check())
 
@@ -291,6 +310,8 @@ async def check_recent_messages(force_update=False):
             if current_status != "OFF" or force_update:
                 decoy_status_manager.update_status("OFF", datetime.now())
                 print("Status set to OFF (no decoy events detected)")
+                # Create initial status message when no decoy messages are found
+                await create_status_message()
         
         print(f"Checked {message_count} messages, found {decoy_messages_found} decoy messages")
                     

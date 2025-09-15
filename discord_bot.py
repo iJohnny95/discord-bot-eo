@@ -60,7 +60,7 @@ async def periodic_decoy_check():
             await asyncio.sleep(60)  # Wait 1 minute on error
 
 async def cleanup_old_status_messages():
-    """Remove old status messages to keep only one"""
+    """Clean up old status messages, keeping only the most recent 5"""
     try:
         output_channel = client.get_channel(OUTPUT_CHANNEL_ID)
         if not output_channel:
@@ -69,23 +69,29 @@ async def cleanup_old_status_messages():
         # Get recent messages from the bot
         bot_messages = []
         async for message in output_channel.history(limit=50):
-            if message.author.id == client.user.id and "DECOY STATUS" in message.content:
+            if message.author.id == client.user.id and ("DECOY STATUS" in message.content or message.embeds):
                 bot_messages.append(message)
         
-        # Keep only the most recent one, delete the rest
-        if len(bot_messages) > 1:
-            for message in bot_messages[1:]:  # Skip the first (most recent)
+        # Keep only the most recent 5 messages, delete the rest
+        if len(bot_messages) > 5:
+            messages_to_delete = bot_messages[5:]  # Delete all but the most recent 5
+            for message in messages_to_delete:
                 try:
                     await message.delete()
-                    print(f"🗑️ Deleted old status message")
-                except:
+                    print(f"🗑️ Deleted old status message: {message.id}")
+                except discord.NotFound:
+                    # Message already deleted
                     pass
+                except discord.Forbidden:
+                    print(f"⚠️ No permission to delete message: {message.id}")
+                except Exception as e:
+                    print(f"⚠️ Error deleting message {message.id}: {e}")
                     
     except Exception as e:
         print(f"Error cleaning up messages: {e}")
 
-async def update_status_message():
-    """Update the single status message in the output channel"""
+async def create_status_message():
+    """Create a new status message in the output channel with enhanced layout"""
     try:
         output_channel = client.get_channel(OUTPUT_CHANNEL_ID)
         if not output_channel:
@@ -97,53 +103,85 @@ async def update_status_message():
         latest_decoy_status = status_data['status']
         latest_message_time_str = status_data['last_update']
         
-        # Format message based on decoy status
-        if latest_decoy_status == "ON":
-            status_text = f"@everyone\n🔴 **DECOY STATUS: {latest_decoy_status}**"
-        else:
-            status_text = f"🔴 **DECOY STATUS: {latest_decoy_status}**"
+        # Create enhanced embed for better visual appeal
+        embed = discord.Embed(
+            title="🛡️ DECOY STATUS UPDATE",
+            color=0xff0000 if latest_decoy_status == "ON" else 0x00ff00,
+            timestamp=datetime.now()
+        )
         
+        # Status field with prominent display
+        if latest_decoy_status == "ON":
+            embed.add_field(
+                name="🚨 STATUS", 
+                value=f"**{latest_decoy_status}**", 
+                inline=True
+            )
+            embed.add_field(
+                name="⚠️ ALERT", 
+                value="**ACTIVE PROTECTION**", 
+                inline=True
+            )
+            embed.add_field(
+                name="📢 NOTIFICATION", 
+                value="@everyone", 
+                inline=True
+            )
+        else:
+            embed.add_field(
+                name="✅ STATUS", 
+                value=f"**{latest_decoy_status}**", 
+                inline=True
+            )
+            embed.add_field(
+                name="🛡️ PROTECTION", 
+                value="**STANDBY**", 
+                inline=True
+            )
+            embed.add_field(
+                name="📊 STATE", 
+                value="**MONITORING**", 
+                inline=True
+            )
+        
+        # Add timestamp information
         if latest_message_time_str:
             latest_message_time = datetime.fromisoformat(latest_message_time_str)
-            status_text += f"\n*Last updated: {latest_message_time.strftime('%Y-%m-%d %H:%M:%S')}*"
+            embed.add_field(
+                name="🕐 Last Activity", 
+                value=f"`{latest_message_time.strftime('%Y-%m-%d %H:%M:%S')}`", 
+                inline=False
+            )
         else:
-            status_text += "\n*No recent decoy activity detected*"
-            
-        # Get current status message ID
-        status_message_id = decoy_status_manager.get_status_message_id()
+            embed.add_field(
+                name="🕐 Last Activity", 
+                value="`No recent decoy activity detected`", 
+                inline=False
+            )
         
-        # If we have a message ID, try to edit it
-        if status_message_id:
-            try:
-                message = await output_channel.fetch_message(status_message_id)
-                await message.edit(content=status_text)
-                print(f"✅ Updated existing status message: {status_text[:50]}...")
-                return
-            except discord.NotFound:
-                # Message was deleted, create a new one
-                print("⚠️ Status message was deleted, creating new one...")
-                decoy_status_manager.set_status_message_id(None)
-            except discord.Forbidden:
-                # No permission to edit, create a new one
-                print("⚠️ No permission to edit message, creating new one...")
-                decoy_status_manager.set_status_message_id(None)
-            except Exception as e:
-                print(f"⚠️ Error editing message: {e}, creating new one...")
-                decoy_status_manager.set_status_message_id(None)
+        # Add footer with bot info
+        embed.set_footer(
+            text="PandaBot Decoy Monitor • Real-time Status Updates",
+            icon_url="https://cdn.discordapp.com/emojis/1234567890123456789.png"  # Optional: add bot avatar
+        )
         
-        # Create new message if we don't have an ID or editing failed
+        # Create the message content
+        content = ""
+        if latest_decoy_status == "ON":
+            content = "@everyone"
+        
+        # Send the new message
         try:
-            message = await output_channel.send(status_text)
-            decoy_status_manager.set_status_message_id(message.id)
-            print(f"✅ Created new status message: {status_text[:50]}...")
+            message = await output_channel.send(content=content, embed=embed)
+            print(f"✅ Created new status message with enhanced layout: {latest_decoy_status}")
             
-            # Clean up any old status messages
+            # Clean up old status messages (keep last 5)
             await cleanup_old_status_messages()
         except Exception as e:
             print(f"❌ Error creating message: {e}")
         
     except Exception as e:
-        print(f"Error updating status message: {e}")
+        print(f"Error creating status message: {e}")
         import traceback
         traceback.print_exc()
 
@@ -244,7 +282,7 @@ async def check_recent_messages(force_update=False):
                 print(f"Current status: {new_status} at {new_time.strftime('%H:%M:%S')}")
                 
                 # Update the status message
-                await update_status_message()
+                await create_status_message()
             else:
                 print(f"Status unchanged: {current_status} (last check: {current_time.strftime('%H:%M:%S') if current_time else 'Never'})")
         else:
@@ -375,12 +413,12 @@ async def on_message(message):
             
             # Update the single status message
             print(f"[{message_time.strftime('%H:%M:%S')}] Decoy status changed to {new_status} - Message: {content[:50]}...")
-            await update_status_message()
+            await create_status_message()
     
     # Handle manual status check command
     if content.lower() == "!decoy_status":
         print("Status check requested")
-        await update_status_message()
+        await create_status_message()
     
     # Handle manual search command
     elif content.lower() == "!search_decoy":
@@ -400,7 +438,7 @@ async def on_message(message):
     # Handle force update command
     elif content.lower() == "!update_status":
         print("Force status update requested")
-        await update_status_message()
+        await create_status_message()
     
     # Handle interval change command
     elif content.lower().startswith("!interval"):

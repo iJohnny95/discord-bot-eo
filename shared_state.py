@@ -12,18 +12,15 @@ class DecoyStatusManager:
         self._lock = threading.Lock()
         self._latest_decoy_status: Optional[str] = "OFF"  # Default to OFF when no events found
         self._latest_message_time: Optional[datetime] = None
-        self._status_message_id: Optional[int] = None
         self._check_interval: int = 5
         self._last_check_time: Optional[datetime] = None
         self._bot_online: bool = False
         
-    def update_status(self, status: str, message_time: datetime, message_id: Optional[int] = None) -> None:
+    def update_status(self, status: str, message_time: datetime) -> None:
         """Update the decoy status"""
         with self._lock:
             self._latest_decoy_status = status
             self._latest_message_time = message_time
-            if message_id:
-                self._status_message_id = message_id
             self._last_check_time = datetime.now()
     
     def get_status(self) -> Dict[str, Any]:
@@ -52,15 +49,6 @@ class DecoyStatusManager:
         with self._lock:
             return self._check_interval
     
-    def get_status_message_id(self) -> Optional[int]:
-        """Get status message ID"""
-        with self._lock:
-            return self._status_message_id
-    
-    def set_status_message_id(self, message_id: Optional[int]) -> None:
-        """Set status message ID"""
-        with self._lock:
-            self._status_message_id = message_id
 
 # Global shared state instance
 decoy_status_manager = DecoyStatusManager()

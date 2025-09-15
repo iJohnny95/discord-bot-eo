@@ -52,7 +52,7 @@ async def on_ready():
             # Check if we have any status messages from this bot
             has_status_message = False
             async for message in output_channel.history(limit=10):
-                if message.author.id == client.user.id and ("DECOY STATUS" in message.content or message.embeds):
+                if message.author.id == client.user.id and ("DECOY STATUS" in message.content or "DECOY STATUS UPDATE" in message.content):
                     has_status_message = True
                     break
             
@@ -88,7 +88,7 @@ async def cleanup_old_status_messages():
         # Get recent messages from the bot
         bot_messages = []
         async for message in output_channel.history(limit=50):
-            if message.author.id == client.user.id and ("DECOY STATUS" in message.content or message.embeds):
+            if message.author.id == client.user.id and ("DECOY STATUS" in message.content or "DECOY STATUS UPDATE" in message.content):
                 bot_messages.append(message)
         
         # Keep only the most recent 5 messages, delete the rest
@@ -122,83 +122,47 @@ async def create_status_message():
         latest_decoy_status = status_data['status']
         latest_message_time_str = status_data['last_update']
         
-        # Create enhanced embed for better visual appeal
-        embed = discord.Embed(
-            title="🛡️ DECOY STATUS UPDATE",
-            color=0xff0000 if latest_decoy_status == "ON" else 0x00ff00,
-            timestamp=datetime.now()
-        )
+        # Create enhanced message content for better visual appeal
+        # Since discord.py-self doesn't support embeds, we'll use rich text formatting
         
-        # Status field with prominent display
+        # Create the main content with enhanced formatting
         if latest_decoy_status == "ON":
-            embed.add_field(
-                name="🚨 STATUS", 
-                value=f"**{latest_decoy_status}**", 
-                inline=True
-            )
-            embed.add_field(
-                name="⚠️ ALERT", 
-                value="**ACTIVE PROTECTION**", 
-                inline=True
-            )
-            embed.add_field(
-                name="📢 NOTIFICATION", 
-                value="@everyone", 
-                inline=True
-            )
+            content = "@everyone\n"
+            content += "🛡️ **DECOY STATUS UPDATE** 🛡️\n"
+            content += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            content += "🚨 **STATUS:** **ON**\n"
+            content += "⚠️ **ALERT:** **ACTIVE PROTECTION**\n"
+            content += "📢 **NOTIFICATION:** @everyone\n"
+            content += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         else:
-            embed.add_field(
-                name="✅ STATUS", 
-                value=f"**{latest_decoy_status}**", 
-                inline=True
-            )
-            embed.add_field(
-                name="🛡️ PROTECTION", 
-                value="**STANDBY**", 
-                inline=True
-            )
-            embed.add_field(
-                name="📊 STATE", 
-                value="**MONITORING**", 
-                inline=True
-            )
+            content = "🛡️ **DECOY STATUS UPDATE** 🛡️\n"
+            content += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            content += "✅ **STATUS:** **OFF**\n"
+            content += "🛡️ **PROTECTION:** **STANDBY**\n"
+            content += "📊 **STATE:** **MONITORING**\n"
+            content += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         
         # Add timestamp information
         if latest_message_time_str:
             latest_message_time = datetime.fromisoformat(latest_message_time_str)
-            embed.add_field(
-                name="🕐 Last Activity", 
-                value=f"`{latest_message_time.strftime('%Y-%m-%d %H:%M:%S')}`", 
-                inline=False
-            )
+            content += f"🕐 **Last Activity:** `{latest_message_time.strftime('%Y-%m-%d %H:%M:%S')}`\n"
         else:
-            embed.add_field(
-                name="🕐 Last Activity", 
-                value="`No recent decoy activity detected`", 
-                inline=False
-            )
+            content += "🕐 **Last Activity:** `No recent decoy activity detected`\n"
         
         # Add footer with bot info
-        embed.set_footer(
-            text="PandaBot Decoy Monitor • Real-time Status Updates",
-            icon_url="https://cdn.discordapp.com/emojis/1234567890123456789.png"  # Optional: add bot avatar
-        )
-        
-        # Create the message content
-        content = ""
-        if latest_decoy_status == "ON":
-            content = "@everyone"
+        content += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        content += "🤖 **PandaBot Decoy Monitor** • Real-time Status Updates"
         
         # Send the new message
         try:
-            message = await output_channel.send(content=content, embeds=[embed])
+            message = await output_channel.send(content)
             print(f"✅ Created new status message with enhanced layout: {latest_decoy_status}")
             
             # Clean up old status messages (keep last 5)
             await cleanup_old_status_messages()
         except Exception as e:
             print(f"❌ Error creating message: {e}")
-            # Fallback to simple text message if embed fails
+            # Fallback to simple text message if rich formatting fails
             try:
                 fallback_content = f"🛡️ **DECOY STATUS: {latest_decoy_status}**"
                 if latest_decoy_status == "ON":
